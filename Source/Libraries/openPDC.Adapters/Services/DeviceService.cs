@@ -130,7 +130,7 @@ namespace openPDC.Adapters.Services
                         // batch is treated as an update instead of a duplicate insert.
                         devicesByAcronym[device.Acronym] = device;
 
-                        upsertDeviceResponseDetail.Status = UpsertDeviceStatus.Included;
+                        upsertDeviceResponseDetail.Status = UpsertDeviceStatus.Included.ToString();
 
                         Log.Publish(MessageLevel.Info, nameof(UpsertDevices), "Device added successfully", details: device.Acronym);
                     }
@@ -144,7 +144,7 @@ namespace openPDC.Adapters.Services
 
                         devicesByAcronym[device.Acronym] = device;
 
-                        upsertDeviceResponseDetail.Status = UpsertDeviceStatus.Updated;
+                        upsertDeviceResponseDetail.Status = UpsertDeviceStatus.Updated.ToString();
 
                         Log.Publish(MessageLevel.Info, nameof(UpsertDevices), "Device updated successfully", details: deviceInDatabase.Acronym);
                     }
@@ -155,7 +155,7 @@ namespace openPDC.Adapters.Services
                 {
                     upsertDeviceResponse.NumberOfRecordsWithFail++;
 
-                    upsertDeviceResponseDetail.Status = UpsertDeviceStatus.Failed;
+                    upsertDeviceResponseDetail.Status = UpsertDeviceStatus.Failed.ToString();
                     upsertDeviceResponseDetail.Message = $"Failed to upsert device, exception: {ex.Message}";
 
                     Log.Publish(MessageLevel.Error, nameof(UpsertDevices),

@@ -30,6 +30,6 @@ namespace openPDC.Adapters.Services
     {
         public string DeviceAcronym { get; set; }
         public string Message { get; set; }
-        public UpsertDeviceStatus Status { get; set; }
+        public string Status { get; set; }
     }
 }
