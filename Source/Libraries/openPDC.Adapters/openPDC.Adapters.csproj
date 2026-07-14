@@ -109,6 +109,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CommonController.cs" />
+    <Compile Include="ProtocolController.cs" />
+    <Compile Include="VendorDeviceController.cs" />
+    <Compile Include="InterconnectionController.cs" />
+    <Compile Include="CompanyController.cs" />
     <Compile Include="Constants\StringConstant.cs" />
     <Compile Include="DeviceController.cs" />
     <Compile Include="DevicePhasorController.cs" />
