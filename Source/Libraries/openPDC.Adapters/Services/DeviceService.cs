@@ -75,7 +75,11 @@ namespace openPDC.Adapters.Services
             using AdoDataConnection context = DataContext;
 
             TableOperations<Node> nodeTable = new(context);
-            var defaultNode = nodeTable.QueryRecordWhere("Name = 'Default'");
+            RecordRestriction nodeRestriction = new("Master = {0} AND Enabled = {1}", true, true);
+
+            var defaultNode = nodeTable.QueryRecords(nodeRestriction)
+                                       .OrderBy(n => n.CreatedOn)
+                                       .FirstOrDefault();
 
             TableOperations<Device> deviceTable = new(context);
 
@@ -226,6 +230,53 @@ namespace openPDC.Adapters.Services
             };
 
             return deviceByPmuConnectionFile;
+        }
+
+        /// <summary>
+        /// Inserts a new device record or updates the existing one (matched by Acronym). Returns
+        /// the ID of the saved device.
+        /// </summary>
+        private static int UpsertDeviceRecord(Device device, string userName)
+        {
+            Log.Publish(MessageLevel.Info, nameof(UpsertDeviceRecord), $"Upserting device record");
+
+            using AdoDataConnection context = DataContext;
+
+            TableOperations<Node> nodeTable = new(context);
+
+            RecordRestriction nodeRestriction = new("Master = {0} AND Enabled = {1}", true, true);
+
+            var defaultNode = nodeTable.QueryRecords(nodeRestriction)
+                                       .OrderBy(n => n.CreatedOn)
+                                       .FirstOrDefault();
+
+            TableOperations<Device> deviceTable = new(context);
+            var deviceInDatabase = deviceTable.QueryRecordWhere("Acronym = {0}", device.Acronym);
+
+            var nowTime = DateTime.Now;
+            var nowTimeFormatted = new DateTime(nowTime.Year, nowTime.Month, nowTime.Day, nowTime.Hour, nowTime.Minute, nowTime.Second, nowTime.Millisecond, DateTimeKind.Local);
+
+            device.NodeID = defaultNode.ID;
+            device.UniqueID = Guid.NewGuid();
+            device.CreatedBy = userName;
+            device.UpdatedBy = userName;
+            device.CreatedOn = nowTimeFormatted;
+            device.UpdatedOn = nowTimeFormatted;
+
+            if (deviceInDatabase == null)
+            {
+                deviceTable.AddNewRecord(device);
+                Log.Publish(MessageLevel.Info, nameof(UpsertDeviceRecord), $"Device added successfully");
+                deviceInDatabase = deviceTable.QueryRecordWhere("Acronym = {0}", device.Acronym);
+            }
+            else
+            {
+                var restriction = new RecordRestriction("Acronym = {0}", deviceInDatabase.Acronym);
+                deviceTable.UpdateRecord(device, restriction);
+                Log.Publish(MessageLevel.Info, nameof(UpsertDeviceRecord), $"Device updated successfully");
+            }
+
+            return deviceInDatabase.ID;
         }
 
         /// <summary>
@@ -611,48 +662,6 @@ namespace openPDC.Adapters.Services
 
                 sourceIndex++;
             }
-        }
-
-        /// <summary>
-        /// Inserts a new device record or updates the existing one (matched by Acronym). Returns
-        /// the ID of the saved device.
-        /// </summary>
-        private int UpsertDeviceRecord(Device device, string userName)
-        {
-            Log.Publish(MessageLevel.Info, nameof(UpsertDeviceRecord), $"Upserting device record");
-
-            using AdoDataConnection context = DataContext;
-
-            TableOperations<Node> nodeTable = new(context);
-            var defaultNode = nodeTable.QueryRecordWhere("Name = 'Default'");
-
-            TableOperations<Device> deviceTable = new(context);
-            var deviceInDatabase = deviceTable.QueryRecordWhere("Acronym = {0}", device.Acronym);
-
-            var nowTime = DateTime.Now;
-            var nowTimeFormatted = new DateTime(nowTime.Year, nowTime.Month, nowTime.Day, nowTime.Hour, nowTime.Minute, nowTime.Second, nowTime.Millisecond, DateTimeKind.Local);
-
-            device.NodeID = defaultNode.ID;
-            device.UniqueID = Guid.NewGuid();
-            device.CreatedBy = userName;
-            device.UpdatedBy = userName;
-            device.CreatedOn = nowTimeFormatted;
-            device.UpdatedOn = nowTimeFormatted;
-
-            if (deviceInDatabase == null)
-            {
-                deviceTable.AddNewRecord(device);
-                Log.Publish(MessageLevel.Info, nameof(UpsertDeviceRecord), $"Device added successfully");
-                deviceInDatabase = deviceTable.QueryRecordWhere("Acronym = {0}", device.Acronym);
-            }
-            else
-            {
-                var restriction = new RecordRestriction("Acronym = {0}", deviceInDatabase.Acronym);
-                deviceTable.UpdateRecord(device, restriction);
-                Log.Publish(MessageLevel.Info, nameof(UpsertDeviceRecord), $"Device updated successfully");
-            }
-
-            return deviceInDatabase.ID;
         }
 
         #endregion [ Methods ]
