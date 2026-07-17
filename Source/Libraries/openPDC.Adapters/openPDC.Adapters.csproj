@@ -112,6 +112,7 @@
     <Compile Include="NodeController.cs" />
     <Compile Include="ProtocolController.cs" />
     <Compile Include="VendorDeviceController.cs" />
+    <Compile Include="HistorianController.cs" />
     <Compile Include="InterconnectionController.cs" />
     <Compile Include="CompanyController.cs" />
     <Compile Include="Constants\StringConstant.cs" />
