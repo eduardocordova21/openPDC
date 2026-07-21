@@ -2,6 +2,7 @@
 #pragma warning disable 1591
 
 using System;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using GSF.ComponentModel;
 using GSF.Data.Model;
@@ -25,6 +26,9 @@ namespace openPDC.Model
         public string Phase { get; set; }
 
         public int SourceIndex { get; set; }
+
+        [DefaultValue(0)]
+        public int BaseKV { get; set; }
 
         public int? DestinationPhasorID { get; set; }
 

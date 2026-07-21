@@ -33,6 +33,17 @@ namespace openPDC.Adapters.Services
         UpsertDeviceResponse UpsertDevices(IReadOnlyList<Device> devices, string userName);
 
         /// <summary>
+        /// Creates or updates devices, their phasors and all derived measurements from data supplied
+        /// directly (no PMU connection), replicating what the Input Device Wizard produces from a
+        /// .PmuConnection file. Each item may be a standalone PMU or a concentrator with child PMUs.
+        /// A failure on one device does not stop the rest of the batch.
+        /// </summary>
+        /// <param name="devices">The devices (and, for concentrators, their children) to import.</param>
+        /// <param name="userName">Name of the user to record as the creator/updater of saved records.</param>
+        /// <returns>The per-device results and a summary of the batch operation.</returns>
+        UpsertDeviceResponse UpsertDevicesFromData(IReadOnlyList<DeviceImportRequest> devices, string userName);
+
+        /// <summary>
         /// Validates and parses a multipart/form-data request containing a .PmuConnection file and
         /// the metadata needed to create or update the associated device(s).
         /// </summary>

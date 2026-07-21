@@ -17,7 +17,7 @@ namespace openPDC.Adapters.Services
     /// Provides device (PMU) persistence operations backing <see cref="DeviceController"/>,
     /// covering .PmuConnection-file based upserts and batch upserts.
     /// </summary>
-    public class DeviceService : IDeviceService
+    public partial class DeviceService : IDeviceService
     {
         #region [ Members ]
 
