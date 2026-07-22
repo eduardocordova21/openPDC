@@ -46,8 +46,55 @@ namespace openPDC.Model
         public string ConnectionString { get; set; }
 
         /// <summary>
-        /// When true, this item is a concentrator: no phasors/measurements are created for it and its
-        /// child PMUs must be supplied in <see cref="Children"/>.
+        /// Optional parent concentrator ID. Lets a standalone PMU be attached to an already-existing
+        /// concentrator without re-sending the concentrator in the same request. Must be null when
+        /// <see cref="IsConcentrator"/> is true (a concentrator cannot itself have a parent).
+        /// </summary>
+        public int? ParentID { get; set; }
+
+        /// <summary>Device latitude (optional); persisted as-is on the device record.</summary>
+        public decimal? Latitude { get; set; }
+
+        /// <summary>Device longitude (optional); persisted as-is on the device record.</summary>
+        public decimal? Longitude { get; set; }
+
+        /// <summary>Whether the device is enabled. Defaults to true when not provided.</summary>
+        public bool? Enabled { get; set; }
+
+        /// <summary>Whether to allow use of cached configuration. Defaults to true when not provided.</summary>
+        public bool? AllowUseOfCachedConfiguration { get; set; }
+
+        /// <summary>Whether to auto-start the data parsing sequence. Defaults to true when not provided.</summary>
+        public bool? AutoStartDataParsingSequence { get; set; }
+
+        /// <summary>Whether the device connects on demand. Defaults to (ParentID == null) when not provided.</summary>
+        public bool? ConnectOnDemand { get; set; }
+
+        /// <summary>Whether to skip disabling real-time data. Defaults to false when not provided.</summary>
+        public bool? SkipDisableRealTimeData { get; set; }
+
+        /// <summary>Data loss interval in seconds. Defaults to 5 when not provided.</summary>
+        public double? DataLossInterval { get; set; }
+
+        /// <summary>Time adjustment in ticks. Defaults to 0 when not provided.</summary>
+        public long? TimeAdjustmentTicks { get; set; }
+
+        /// <summary>Allowed parsing exceptions before recycling the connection. Defaults to 10 when not provided.</summary>
+        public int? AllowedParsingExceptions { get; set; }
+
+        /// <summary>Parsing exception window in seconds. Defaults to 5 when not provided.</summary>
+        public double? ParsingExceptionWindow { get; set; }
+
+        /// <summary>Delayed connection interval in seconds. Defaults to 5 when not provided.</summary>
+        public double? DelayedConnectionInterval { get; set; }
+
+        /// <summary>Measurement reporting interval. Defaults to 100000 when not provided.</summary>
+        public int? MeasurementReportingInterval { get; set; }
+
+        /// <summary>
+        /// When true, this item is a concentrator: no phasors/measurements are created for it. Its
+        /// child PMUs may be supplied in <see cref="Children"/> (nested), or created separately as
+        /// standalone items referencing this concentrator through <see cref="ParentID"/>.
         /// </summary>
         public bool IsConcentrator { get; set; }
 

@@ -51,9 +51,12 @@ namespace openPDC.Adapters.Services
 
                     bool hasChildren = item.Children != null && item.Children.Count > 0;
 
-                    if (item.IsConcentrator && !hasChildren)
-                        throw new InvalidOperationException("A concentrator must include at least one child device.");
+                    if (item.IsConcentrator && item.ParentID.HasValue)
+                        throw new InvalidOperationException("A concentrator cannot have a ParentID.");
 
+                    // A concentrator may be created on its own: its child PMUs can be imported later
+                    // as standalone items that reference it through ParentID, so an empty Children
+                    // list is valid here (unlike the .PmuConnection wizard flow).
                     if (!item.IsConcentrator && hasChildren)
                         throw new InvalidOperationException("A standalone PMU must not include child devices; set IsConcentrator = true.");
 
@@ -63,16 +66,16 @@ namespace openPDC.Adapters.Services
                         // measurements for the concentrator itself, only for its child PMUs.
                         var parentDevice = BuildDevice(item.Acronym, item.Name, item.AccessID, item.FramesPerSecond,
                             item.CompanyID, item.ProtocolID, item.HistorianID, item.VendorDeviceID, item.InterconnectionID,
-                            isConcentrator: true, parentID: null, connectionString: item.ConnectionString);
+                            isConcentrator: true, parentID: null, connectionString: item.ConnectionString, overrides: item);
 
                         bool parentExists = deviceTable.QueryRecordWhere("Acronym = {0}", item.Acronym) != null;
                         int parentDeviceID = UpsertDeviceRecord(parentDevice, userName);
 
                         response.NumberOfRecordsProcessedWithSuccess++;
                         AddDetail(response, item.Acronym, parentExists ? UpsertDeviceStatus.Updated : UpsertDeviceStatus.Included,
-                            $"Concentrator saved with {item.Children.Count} child device(s).");
+                            $"Concentrator saved with {(item.Children?.Count ?? 0)} child device(s).");
 
-                        foreach (var child in item.Children)
+                        foreach (var child in item.Children ?? Enumerable.Empty<DeviceImportChild>())
                         {
                             response.NumberOfReceivedRecords++;
 
@@ -110,7 +113,7 @@ namespace openPDC.Adapters.Services
                     {
                         var device = BuildDevice(item.Acronym, item.Name, item.AccessID, item.FramesPerSecond,
                             item.CompanyID, item.ProtocolID, item.HistorianID, item.VendorDeviceID, item.InterconnectionID,
-                            isConcentrator: false, parentID: null, connectionString: item.ConnectionString);
+                            isConcentrator: false, parentID: item.ParentID, connectionString: item.ConnectionString, overrides: item);
 
                         bool deviceExists = deviceTable.QueryRecordWhere("Acronym = {0}", item.Acronym) != null;
                         int deviceID = UpsertDeviceRecord(device, userName);
@@ -137,12 +140,14 @@ namespace openPDC.Adapters.Services
         }
 
         /// <summary>
-        /// Builds a <see cref="Device"/> record from import data, using the same defaults as the
-        /// .PmuConnection-file flow (see BuildParentDevice / ProcessAndSaveChildDevice).
+        /// Builds a <see cref="Device"/> record from import data. Uses the same defaults as the
+        /// .PmuConnection-file flow (see BuildParentDevice / ProcessAndSaveChildDevice), but any field
+        /// supplied on <paramref name="overrides"/> takes precedence, letting the caller control the
+        /// device configuration explicitly (latitude/longitude and the operational parameters).
         /// </summary>
         private static Device BuildDevice(string acronym, string name, int accessID, int? framesPerSecond,
             int? companyID, int? protocolID, int? historianID, int? vendorDeviceID, int? interconnectionID,
-            bool isConcentrator, int? parentID, string connectionString)
+            bool isConcentrator, int? parentID, string connectionString, DeviceImportRequest overrides = null)
         {
             return new Device
             {
@@ -156,17 +161,21 @@ namespace openPDC.Adapters.Services
                 InterconnectionID = interconnectionID,
                 ParentID = parentID,
                 AccessID = accessID,
+                Latitude = overrides?.Latitude,
+                Longitude = overrides?.Longitude,
                 FramesPerSecond = framesPerSecond > 0 ? framesPerSecond : 30,
                 ConnectionString = connectionString ?? string.Empty,
-                Enabled = true,
-                AllowUseOfCachedConfiguration = true,
-                AutoStartDataParsingSequence = true,
-                ConnectOnDemand = parentID == null,
-                DataLossInterval = 5.0,
-                AllowedParsingExceptions = 10,
-                ParsingExceptionWindow = 5.0,
-                DelayedConnectionInterval = 5.0,
-                MeasurementReportingInterval = 100000
+                Enabled = overrides?.Enabled ?? true,
+                AllowUseOfCachedConfiguration = overrides?.AllowUseOfCachedConfiguration ?? true,
+                AutoStartDataParsingSequence = overrides?.AutoStartDataParsingSequence ?? true,
+                ConnectOnDemand = overrides?.ConnectOnDemand ?? (parentID == null),
+                SkipDisableRealTimeData = overrides?.SkipDisableRealTimeData ?? false,
+                DataLossInterval = overrides?.DataLossInterval ?? 5.0,
+                TimeAdjustmentTicks = overrides?.TimeAdjustmentTicks ?? 0,
+                AllowedParsingExceptions = overrides?.AllowedParsingExceptions ?? 10,
+                ParsingExceptionWindow = overrides?.ParsingExceptionWindow ?? 5.0,
+                DelayedConnectionInterval = overrides?.DelayedConnectionInterval ?? 5.0,
+                MeasurementReportingInterval = overrides?.MeasurementReportingInterval ?? 100000
             };
         }
 
