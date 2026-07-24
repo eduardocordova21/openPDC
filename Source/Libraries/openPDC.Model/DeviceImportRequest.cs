@@ -162,5 +162,14 @@ namespace openPDC.Model
 
         /// <summary>Optional 1-based source index; defaults to the item's position in the list.</summary>
         public int? SourceIndex { get; set; }
+
+        /// <summary>
+        /// Optional link to the associated voltage phasor, identified by its <see cref="SourceIndex"/>
+        /// within the same phasor list (<see cref="DeviceImportRequest.Phasors"/> or
+        /// <see cref="DeviceImportChild.Phasors"/>). Set this on a current ("I") phasor to populate
+        /// <c>Phasor.DestinationPhasorID</c> once both phasors are persisted, mirroring the
+        /// voltage/current pairing the Input Device Wizard produces. Ignored on voltage phasors.
+        /// </summary>
+        public int? DestinationPhasorSourceIndex { get; set; }
     }
 }

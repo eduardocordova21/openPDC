@@ -182,6 +182,10 @@ namespace openPDC.Adapters.Services
         /// <summary>
         /// Inserts or updates phasors from import data, matched by (DeviceID, SourceIndex). Skips
         /// phasors with an empty or "unused" label, mirroring the wizard. Persists Phase and BaseKV.
+        /// Resolves <see cref="PhasorImportItem.DestinationPhasorSourceIndex"/> into the persisted
+        /// <see cref="Phasor.DestinationPhasorID"/> (current-to-voltage pairing) in a second pass,
+        /// once every phasor of the device has an ID, since a current can reference a voltage that
+        /// appears later in the same list.
         /// </summary>
         private static void SavePhasorsFromItems(List<PhasorImportItem> phasors, int deviceID, TableOperations<Phasor> phasorTable, string userName)
         {
@@ -189,6 +193,7 @@ namespace openPDC.Adapters.Services
                 return;
 
             int sourceIndex = 1;
+            var pendingLinks = new List<(int TargetIndex, int DestinationSourceIndex)>();
 
             foreach (var item in phasors)
             {
@@ -212,7 +217,11 @@ namespace openPDC.Adapters.Services
                     Type = string.Equals(item.Type, "I", StringComparison.OrdinalIgnoreCase) ? "I" : "V",
                     Phase = string.IsNullOrEmpty(item.Phase) ? "+" : item.Phase,
                     BaseKV = item.BaseKV,
-                    SourceIndex = targetIndex
+                    SourceIndex = targetIndex,
+                    // Preserva um vínculo já persistido (ex.: definido manualmente na UI) quando este
+                    // payload não traz DestinationPhasorSourceIndex para o item; a segunda passada,
+                    // abaixo, sobrescreve com o valor resolvido quando o payload traz o vínculo.
+                    DestinationPhasorID = existingPhasor?.DestinationPhasorID
                 };
 
                 var nowTime = DateTime.Now;
@@ -229,7 +238,30 @@ namespace openPDC.Adapters.Services
                     phasorTable.UpdateRecord(phasor, new RecordRestriction(
                         "DeviceID = {0} AND SourceIndex = {1}", deviceID, targetIndex));
 
+                if (item.DestinationPhasorSourceIndex.HasValue)
+                    pendingLinks.Add((targetIndex, item.DestinationPhasorSourceIndex.Value));
+
                 sourceIndex++;
+            }
+
+            foreach (var (targetIndex, destinationSourceIndex) in pendingLinks)
+            {
+                var sourcePhasor = phasorTable.QueryRecordWhere(
+                    "DeviceID = {0} AND SourceIndex = {1}", deviceID, targetIndex);
+                var destinationPhasor = phasorTable.QueryRecordWhere(
+                    "DeviceID = {0} AND SourceIndex = {1}", deviceID, destinationSourceIndex);
+
+                if (sourcePhasor == null || destinationPhasor == null || sourcePhasor.ID == destinationPhasor.ID)
+                {
+                    Log.Publish(MessageLevel.Warning, nameof(SavePhasorsFromItems),
+                        $"Could not resolve DestinationPhasorID for device {deviceID}, SourceIndex {targetIndex} " +
+                        $"(destination SourceIndex {destinationSourceIndex}); phasor pairing skipped.");
+                    continue;
+                }
+
+                sourcePhasor.DestinationPhasorID = destinationPhasor.ID;
+                phasorTable.UpdateRecord(sourcePhasor, new RecordRestriction(
+                    "DeviceID = {0} AND SourceIndex = {1}", deviceID, targetIndex));
             }
         }
 
